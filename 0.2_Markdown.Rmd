@@ -1,0 +1,279 @@
+---
+title: "model_0.1"
+author: "jiaqi He"
+date: "2022/8/30"
+output: html_document
+---
+
+## 加载数据
+
+```{r}
+mydata <- read.csv (file.choose ())
+
+View(mydata)
+
+library(tidyverse)
+
+library(dplyr)
+
+as_tibble(mydata)
+```
+
+
+##将“位置”“温度”“荧光值的导数”“浓度”这四列提取出来。数据集定义为“four_column"。
+
+```{r}
+four_column <- select(mydata,!c(Well,Reading,Fluorescence))
+
+view(four_column)
+```
+
+## 问题 1：如何把行名变为 A1,A2...而非 1,2,3,4...?
+
+```{r}
+rownames(four_column) <- NULL
+
+rownames(four_column) <- four_column[,1]
+
+four_column <- four_column[,-1]
+
+view(new_four_column)
+```
+
+## 剔除 A11-A19, B11-B19, C11-C18, D11-D18, E11-E18, F11-F18, G11-G18, H11-H18, I11-I18, J11-J18, K11-K18, L11-L18, M11-M18, N11-N18, O11-O18, P11-P18 数据行，新的数据集定义为“new_four_column"。问题 2 ：剔除行的代码哪里出错了？
+
+```{r}
+del1 <- which(four_column$Well.Position == "^A[11-19]$","^B[11-19]$","^C[11-18]$","^D[11-18]$","^E[11-18]$", "^F[11-18]$","^G[11-18]$","^H[11-18]$","^I[11-18]$","^J[11-18]$","^K[11-18]$","^L[11-18]$","^M[11-18]$","^N[11-18]$","^O[11-18]$","^P[11-18]$")
+
+new_four_column <- four_column[-del,]
+
+write.csv(new_four_column,"D:/R-project/melting_model/data/new_four_column.csv")
+```
+
+## 问题 3 ：直接选择 A1-A10,B1-B10,...,H1-H10 行，还是报错了。
+
+```{r}
+new_four_column <- four_column %>% filter(str_detect(`Well.Position`, "[A-H][]^A[1-10]$","^B[1-10]$","^C[1-10]$","^D[1-10]$","^E[1-10]$","^F[1-10]$","^G[1-10]$","^H[1-10]$"))
+
+read_melting_data = function(file){
+  if (xfun::file_ext(file) == "xlsx"){
+    raw_data = openxlsx::read.xlsx(file)
+  } else if (xfun::file_ext(file) == "csv"){
+    raw_data =  readr::read_csv(file = file)
+  } else {
+    stop("Only support xlsx or csv format.")
+  }
+  raw_data = raw_data  %>%
+    select(2,4,6)
+  colnames(raw_data) = c("well", "temp","derivative")
+
+  return(melting_data)
+}
+
+read_melting_data(file) %>%
+    mutate(row = str_extract(well,"[A-H]"),
+           col = as.numeric(str_extract(well,"[0-9]+"))) %>%
+    filter(row %in% LETTERS[1:8], col <= 10) %>%
+    dplyr::select(1:3)
+```
+
+
+```{r}
+ggplot(melting_data, aes(temp, derivative, color = as_factor(well))) +
+  geom_line()
+
+```
+
+
+```{r}
+# assign standard DNA concentration with ids
+strain1 = paste0("E", seq(0,15))
+concentration1 = 373.10/2^(seq(0,15))
+names(concentration1) = strain1
+strain2 = paste0("P", seq(0,15))
+concentration2 = 450.00/2^(seq(0,15))
+names(concentration2) = strain2
+
+
+# assign DNA concentration to wells
+
+coculture_id = matrix('', nrow = 16, ncol = 24) %>%
+  as_tibble()
+
+for (col in 3:18){
+  for (row in 1:16){
+    coculture_id[row, col] = paste( concentration1[strain1[row]], 
+                                    concentration2[strain2[col-2]], 
+                                    sep = ",")
+  }
+}
+
+colnames(coculture_id) = as.character(1:24)
+coculture_id$row = LETTERS[1:16]
+
+well_concentration = coculture_id %>%
+  pivot_longer(cols = -row, 
+               names_to = "col",
+               values_to = "mix_concentration") %>%
+  unite(well, row, col, sep = "")
+```
+
+
+```{r}
+# combine data
+melting_data %>% left_join(well_concentration) %>%
+  sample_n(30)
+```
+
+
+## 给 concentration 列中的缺失值批量赋值。各行中 concentration 列缺失值如下：
+## A3:373.10,450.00
+## A4:373.10,225.00
+## A5:373.10,112.50
+## A6:373.10,56.25
+## A7:373.10,28.12
+## A8:373.10,14.06
+## A9:373.10,7.03
+## A10:373.10,3.50
+
+## B3:186.50,450.00
+## B4:186.50,225.00
+## B5:186.50,112.50
+## B6:186.50,56.25
+## B7:186.50,28.12
+## B8:186.50,14.06
+## B9:186.50,7.03
+## B10:186.50,3.50
+
+## C3:93.25,450.00
+## C4:93.25,225.00
+## C5:93.25,112.50
+## C6:93.25,56.25
+## C7:93.25,28.12
+## C8:93.25,14.06
+## C9:93.25,7.03
+## C10:93.25,3.50
+
+## D3:46.62,450.00
+## D4:46.62,225.00
+## D5:46.62,112.50
+## D6:46.62,56.25
+## D7:46.62,28.12
+## D8:46.62,14.06
+## D9:46.62,7.03
+## D10:46.62,3.50
+
+## E3:23.31,450.00
+## E4:23.31,225.00
+## E5:23.31,112.50
+## E6:23.31,56.25
+## E7:23.31,28.12
+## E8:23.31,14.06
+## E9:23.31,7.03
+## E10:23.31,3.50
+
+## F3:11.65,450.00
+## F4:11.65,225.00
+## F5:11.65,112.50
+## F6:11.65,56.25
+## F7:11.65,28.12
+## F8:11.65,14.06
+## F9:11.65,7.03
+## F10:11.65,3.50
+
+## G3:5.82,450.00
+## G4:5.82,225.00
+## G5:5.82,112.50
+## G6:5.82,56.25
+## G7:5.82,28.12
+## G8:5.82,14.06
+## G9:5.82,7.03
+## G10:5.82,3.50
+
+## H3:2.91,450.00
+## H4:2.91,225.00
+## H5:2.91,112.50
+## H6:2.91,56.25
+## H7:2.91,28.12
+## H8:2.91,14.06
+## H9:2.91,7.03
+## H10:2.91,3.50
+
+##### 问题 4 ：如何把这些浓度填补依次缺失值？我想使用replace_na()函数通过对指定列的查询来将 NA 替换成需要的数值 。 然后再将new_A3...new_H10等通过列名连接成一个整体，作为测试集。
+
+```{r}
+library(stringr)
+new_A3 <- filter(new_four_column,str_detect(Well.Position, "^A3$") %>%
+            replace_na(list(concentration = "373.10,450.00")))
+   
+   
+new_A4 <-  
+   
+new_A5 <-   
+  
+......
+
+new_H10 <-
+
+test_four_column_complete <- bind_rows(new_A3,new_A4,new_A5,new_A6,new_A7,new_A8,new_A9,new_A10,
+                                  .....
+                                  .....
+                                                                            ......new_H10)
+```
+
+## 以上操作没有实现，所以我手动把 A3 - H10 缺失的浓度值填补到 csv 文件中了。这个文件命名为 "new_four_column_hand_complete.csv"。
+
+```{r}
+new_four_column_hand_complete <- read.csv (file.choose ())
+```
+
+
+## 用单菌的数据建模（训练集），之后使用双菌的数据检测模型准确度（另一种菌当做背景噪音，即测试集）。首先整理大肠杆菌的训练集：
+```{r}
+EC_train <- new_four_column_hand_complete %>% filter(str_detect(`Well.Position`, "^[A-H]1$"))
+```
+
+## 获取训练集的自变量(Temperature)矩阵和因变量(Derivative)矩阵：
+
+```{r}
+EC_train_x <- as.matrix(EC_train[])
+```
+
+
+
+
+
+
+
+##### 问题2：如何
+
+
+
+
+
+
+
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

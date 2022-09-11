@@ -1,0 +1,129 @@
+---
+title: "2022-6-1 第三次重复"
+output: html_document
+---
+
+# 尝试使用最近一次的 qPCR 数据建模
+
+首先读取数据。
+
+```{r}
+mydata<-read.csv (file.choose ())
+View(mydata)
+```
+
+把 CSV 文件（已在单菌处添加稀释后的浓度 concentration）转换为 tibble，使用 tidyverse 中的 tibble 包。
+
+```{r}
+library(tidyverse)
+as_tibble(mydata)
+```
+
+之后，把单菌的数据行提取出来。A1,B1,C1...H1是 EC（定义为single__EC）；A2,B2,C2...H2是 PP（定义为single__PP）。
+```{r}
+mydata %>% filter(str_detect(`Well.Position`, "^[A-H]1$"))
+single__EC <-  mydata %>% filter(str_detect(`Well.Position`, "^[A-H]1$"))
+```
+
+```{r}
+mydata %>% filter(str_detect(`Well.Position`, "^[A-H]2$"))
+single__PP <-  mydata %>% filter(str_detect(`Well.Position`, "^[A-H]2$"))
+```
+
+现在已经收集好图像数据（萤光值的导数）并给定标签（浓度），接下来使用 keras 建模，先训练一个分类器。
+
+```{r}
+library(keras)
+
+single__EC$train$x <- single__EC$Derivative
+single__EC$test$x <- single__EC$Derivative
+
+single__EC$train$y <- single__EC$concentration
+single__EC$test$y <- single__EC$concentration
+
+model <- keras_model_sequential()
+model %>%
+  layer_flatten(input_shape = single__EC$train$x) %>%
+  layer_dense(units = 500, activation = 'relu') %>%
+  layer_dense(units = 250, activation = 'relu') %>% 
+  layer_dense(units = 125, activation = 'softmax')
+```
+
+
+
+
+现在需要把 EC 的数据划分为训练集（70%）和测试集（30%）。尝试使用 scorecard 包。
+```{r setup}
+library(scorecard)
+set.seed(20220711)
+EC_list <- split_df(single__EC, ratio = 0.7)
+EC_train <- EC_list$Derivative
+EC_test <- EC_list$concentration
+```
+但是EC_train、EC_test都显示为空。下面我尝试先把荧光值(导数)与浓度分离，再按照7：3划分训练集与测试集。
+```{r setup}
+EC_X <- single__EC$Derivative
+EC_Y <- single__EC$concentration
+set.seed(20220711)
+list_Derivative <- split_df(EC_X, ratio = 0.7)
+list_concentration <- split_df(EC_Y, ratio = 0.7)
+```
+
+我意识到按照7：3直接划分荧光值(导数)与浓度是不正确的。一个孔中的荧光值(导数)与浓度是一个整体。下面我尝试把 （EC）A1、B1、C1、D1、E1、F1、H1数据训练，用（PP）A2、B2、C2、D2、E2、F2、H2数据测试，保持每个样品中荧光值 (导数) 与对应的浓度不分离。
+```{r setup}
+library(keras)
+```
+
+
+7.19：用单菌的数据建模，之后使用双菌的数据检测模型准确度（另一种菌当做背景噪音）。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

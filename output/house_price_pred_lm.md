@@ -10,7 +10,8 @@ set.seed(202209)
 
 # Data Processing
 
-读入数据，生成R数据框。将 price、sqft_living、sqft_lot、sqft_above
+读入数据，生成R数据框。将
+`price`、`sqft_living`、`sqft_lot`、`sqft_above`
 这四个变量取对数；并计算到 2015 年时房屋的年龄。
 
 ``` r
@@ -29,7 +30,7 @@ house <- house %>%
 函数将数据集随机划分为学习数据集和测试数据集。先抽取学习数据集的观测序号，学习数据集是抽取的观测序号对应的观测。测试数据集是未被抽取到学习数据集的观测。
 
 ``` r
-id_learning <- sample(1:nrow(house),round(0.7*nrow(house)))
+id_learning <- sample(1:nrow(house), round(0.7*nrow(house)))
 house_learning <- house[id_learning,]
 house_testing <- house[-id_learning,]
 ```
@@ -75,7 +76,7 @@ summary(fit.lm)
     ## Multiple R-squared:  0.638,  Adjusted R-squared:  0.6377 
     ## F-statistic:  2960 on 9 and 15119 DF,  p-value: < 2.2e-16
 
-模型中各个自变量的系数均显著不为0；模型的R方为0.6406。
+模型中各个自变量的系数均显著不为 0；模型的 R 方为 0.6406。
 
 提取模型的系数估计值
 
@@ -108,16 +109,17 @@ str(resid)
 
 # 模型诊断
 
-将绘图窗口分为2\*2的矩阵。指定绘图区域离下边界、左边界、上边界和右边界的距离（单位为文本行数），方便画下所有诊断图。
+将绘图窗口分为 2\*2
+的矩阵。指定绘图区域离下边界、左边界、上边界和右边界的距离（单位为文本行数），方便画下所有诊断图。
 
 画模型诊断图。
 
 ``` r
-par(mfrow=c(2,2))
-par(mar=c(2.5,2.5,1.5,1.5))
+par(mfrow=c(2, 2))
+par(mar=c(2.5, 2.5, 1.5, 1.5))
 
 library(ggplot2)
-plot(fit.lm,which=c(1:4))
+plot(fit.lm, which=c(1:4))
 ```
 
 ![](/home/gaoch/Desktop/GitHub/Model_code/output/house_price_pred_lm_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
@@ -131,9 +133,9 @@ plot(fit.lm,which=c(1:4))
 ``` r
 fit2.lm <- lm(log_price ~ log_sqft_living + log_sqft_lot + log_sqft_above + age + bedrooms + bathrooms + floors + condition + grade,data = house_learning[rownames(house_learning)!="15871",])
 
-par(mfrow=c(2,2))
-par(mar=c(2.5,2.5,1.5,1.5))
-plot(fit2.lm,which=c(1:4))
+par(mfrow=c(2, 2))
+par(mar=c(2.5, 2.5, 1.5, 1.5))
+plot(fit2.lm, which=c(1:4))
 ```
 
 ![](/home/gaoch/Desktop/GitHub/Model_code/output/house_price_pred_lm_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
@@ -141,14 +143,14 @@ plot(fit2.lm,which=c(1:4))
 使用所得的线性模型对测试数据集进行预测。
 
 ``` r
-prediction.lm <- predict(fit2.lm,house_testing)
+prediction.lm <- predict(fit2.lm, house_testing)
 ```
 
 `predition.lm` 中含有预测的对数价格，`exp(pred.lm)`
 将对数价格转换为预测的价格。将预测价格与真实价格取差值，平方之后平均，再开根号。计算出测试数据集的房屋价格预测的均方根误差。
 
 ``` r
-rmse.lm <- sqrt(mean((exp(prediction.lm)-house_testing$price)^2))
+rmse.lm <- sqrt(mean((exp(prediction.lm) - house_testing$price)^2))
 
 str(rmse.lm)
 ```

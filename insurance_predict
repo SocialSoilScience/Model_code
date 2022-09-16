@@ -6,28 +6,28 @@ output: html_document
 ---
 # 根据某保险公司客户的数据insurance.csv,建立预测保险费用的模型。
 
+加载程序包
 ```{r}
-####加载程序包
 library(dplyr)
 library(glmnet)
 library(caret)
-#使用其中的dummyVar()函数,用来生成虚拟变量。
+使用其中的dummyVar()函数,用来生成虚拟变量。
 
-####设置随机数种子
+设置随机数种子
 set.seed(220914)
 ```
 
-# 1.读取insurance.csv中的数据，声明各变量类型，并将数据储存为R数据框。查看各分类变量的频数表。对因变量charges进行对数转换。
+1.读取insurance.csv中的数据，声明各变量类型，并将数据储存为R数据框。查看各分类变量的频数表。对因变量charges进行对数转换。
 
 ```{r}
-####读入数据，生成R数据框。将sex、smoker和region按照字符型变量读入，其他变量按照数值型变量读入。
+读入数据，生成R数据框。将sex、smoker和region按照字符型变量读入，其他变量按照数值型变量读入。
 insurance <- read.csv("D:/数据挖掘——基于R语言的实战/experiment/data/insurance.csv",
                   colClasses = c("numeric","character",
                                  rep("numeric",2),
                                  rep("character",2),
                                  "numeric"))
 
-####查看各分类变量的频数表
+查看各分类变量的频数表
 table(insurance$sex)
 ## female   male 
 ##    662    676
@@ -44,23 +44,23 @@ table(insurance$region)
 ## northeast northwest southeast southwest 
 ##       324       325       364       325
 
-####对因变量charges做对数转换，生成新变量log_charges。
+对因变量charges做对数转换，生成新变量log_charges。
 insurance <- insurance %>% mutate(log_charges=log(charges))
 ```
 
-# 2. 随机抽取 70% 的观测作为学习数据集，剩余 30% 作为测试数据集。将学习数据集和测试数据集存入 .csv文件。
+2. 随机抽取 70% 的观测作为学习数据集，剩余 30% 作为测试数据集。将学习数据集和测试数据集存入 .csv文件。
 
 ```{r}
 id_learning <- sample(1:nrow(insurance), 0.7*nrow(insurance))
-####随机抽取学习数据集的观测序号。
+随机抽取学习数据集的观测序号。
 
 insurance_learning <- insurance[id_learning,]
-####学习数据集包含抽取的观测序号对应的观测。
+学习数据集包含抽取的观测序号对应的观测。
 
 insurance_test <- insurance[-id_learning,]
-####测试数据集包含其他观测序号对应的观测。
+测试数据集包含其他观测序号对应的观测。
 
-####将学习数据集和测试数据集存入.csv文件。
+将学习数据集和测试数据集存入.csv文件。
 write.csv(insurance_learning, "D:/数据挖掘——基于R语言的实战/experiment/data/insurance_learning.csv",
           row.names = FALSE)
 
@@ -68,39 +68,42 @@ write.csv(insurance_test, "D:/数据挖掘——基于R语言的实战/experimen
           row.names = FALSE)
 ```
 
-# 3. 根据学习数据集建立线性模型。查看模型诊断图并点评。计算线性模型对测试数据集的保险费用预测的均方根误差。
+3. 根据学习数据集建立线性模型。查看模型诊断图并点评。计算线性模型对测试数据集的保险费用预测的均方根误差。
 
 ```{r}
 fit.lm <- lm(log_charges ~ age+sex+bmi+children+smoker+region,
              data = insurance_learning)
-#####因变量为log_charges，自变量为age、sex等。使用学习数据集insurance_learning。lm()函数会将字符型变量转换为哑变量，因此不需要事先转换。children是定序变量，这里被当作连续变量。
+因变量为log_charges，自变量为age、sex等。使用学习数据集insurance_learning。lm()函数会将字符型变量转换为哑变量，因此不需要事先转换。children是定序变量，这里被当作连续变量。
 
 par(mfrow=c(2,2))
 par(mar=c(2.5,2.5,1.5,1.5))
 plot(fit.lm,which=c(1:4))
-#### 画出模型诊断图。 
-#### Residuals vs Fitted：横轴是y值（Fitted value），纵轴是残差（Residuals）。 我们希望看到残差的分布是比较均匀的。如果残差随着Fitted value 的增大而有增大或减小的趋势， 或者残差的分布更近似于一个二次曲线，那么就意味着可能原本的数据并不是线性关系。这时候可以做一些求对数、求指数、求平方根等变换，然后再进行线性回归。在这幅图表明原本的数据明显的不是线性关系。
+画出模型诊断图。 
+Residuals vs Fitted：横轴是y值（Fitted value），纵轴是残差（Residuals）。我们希望看到残差的分布是比较均匀的。
+如果残差随着Fitted value 的增大而有增大或减小的趋势， 或者残差的分布更近似于一个二次曲线，那么就意味着可能原本的数据并不是线性关系。
+这时候可以做一些求对数、求指数、求平方根等变换，然后再进行线性回归。在这幅图表明原本的数据明显的不是线性关系。
 
-#### Scale-Location 图用来检查等方差假设。我们假设预测的模型里方差是一个定值。如果方差不是一个定值那么这个模型的可靠性便大打折扣。在实际操作中，如出现类似“微笑曲线”或者“倒微笑曲线”的情况，也无法通过方差恒定测试。从 Scale-Location 图中可以看出，线性假设和同方差假设不成立。
+Scale-Location：用来检查等方差假设。我们假设预测的模型里方差是一个定值。如果方差不是一个定值那么这个模型的可靠性便大打折扣。
+在实际操作中，如出现类似“微笑曲线”或者“倒微笑曲线”的情况，也无法通过方差恒定测试。从 Scale-Location 图中可以看出，线性假设和同方差假设不成立。
 
-#### Normal QQ-plot 用来检测其残差是否是正态分布的。如果是，这张图上的点将会贴近y=x这条直线。从 QQ 图可以看出，正态假设不成立。
+Normal QQ-plot：用来检测其残差是否是正态分布的。如果是，这张图上的点将会贴近y=x这条直线。从 QQ 图可以看出，正态假设不成立。
 
 pred.lm <- predict(fit.lm,insurance_test)
-####使用线性模型对测试数据集进行预测。
+使用线性模型对测试数据集进行预测。
 
 rmse.lm <- sqrt(mean((exp(pred.lm)-insurance_test$charges)^2))
-####计算对测试数据集的保险费用预测的均方根误差。
+计算对测试数据集的保险费用预测的均方根误差。
 
 rmse.lm
-####取值为9218.499
+均方根误差取值为9218.499。
 ```
 
-# 4. 根据学习数据集建立Lasso模型，使用交叉验证选择调节参数。计算Lasso模型对测试数据集的保险费用预测的均方根误差。
+4. 根据学习数据集建立Lasso模型，使用交叉验证选择调节参数。计算Lasso模型对测试数据集的保险费用预测的均方根误差。
 
 ```{r}
-##下面将用到的cv.glmnet()函数不能应对不是哑变量形式的定类变量，因此需要事先将这些变量转换为哑变量。
+下面将用到的cv.glmnet()函数不能应对不是哑变量形式的定类变量，因此需要事先将这些变量转换为哑变量。
 
-####将学习数据集和测试数据集中的字符型变量sex、smoker、region转换为因子型。
+将学习数据集和测试数据集中的字符型变量sex、smoker、region转换为因子型。
 insurance_learning <- insurance_learning %>%
   mutate(sex = as.factor(sex)) %>%
   mutate(smoker = as.factor(smoker)) %>%
@@ -111,54 +114,62 @@ insurance_test <- insurance_test %>%
   mutate(smoker = as.factor(smoker)) %>%
   mutate(region = as.factor(region))
 
-####查看 heart_learning 和 heart_test 数据集中各个变量的基本情况。
+查看 heart_learning 和 heart_test 数据集中各个变量的基本情况。
 str(insurance_learning)
 str(insurance_test)
-####两个数据集中因子型变量的因子水平一样。sex 有两个水平，smoker 有两个水平，region 有四个水平。 这样的话，使用学习数据集建立的任何模型都可以应用于测试数据集而不会报错。
+两个数据集中因子型变量的因子水平一样。sex 有两个水平，smoker 有两个水平，region 有四个水平。 这样的话，使用学习数据集建立的任何模型都可以应用于测试数据集而不会报错。
 
 
-####用caret()包中的dummyVars()函数将不是哑变量形式的定类自变量转换为哑变量。
+用caret()包中的dummyVars()函数将不是哑变量形式的定类自变量转换为哑变量。
 dmy <- dummyVars(~ sex+smoker+region,insurance_learning, 
                  fullRank = TRUE)
-#### "~"之后的部分指定需要转换的定类自变量；使用的数据集为学习数据集 movie_learning；
-#### fullRank=TRUE 说明生成的哑变量需要满秩，即对有 k 个水平的因子型变量生成 k-1 个哑变量。
+ "~"之后的部分指定需要转换的定类自变量；使用的数据集为学习数据集 movie_learning；
+ fullRank=TRUE 说明生成的哑变量需要满秩，即对有 k 个水平的因子型变量生成 k-1 个哑变量。
 
 
-####获得将不是哑变量形式的定类自变量转换为哑变量之后的学习数据集。
+获得将不是哑变量形式的定类自变量转换为哑变量之后的学习数据集。
 insurance_learning <- 
   cbind(insurance_learning,predict(dmy,insurance_learning)) %>%
   select(-c(sex,smoker,region)) %>%
   select(-c(charges,log_charges),everything())
-####使用predict()函数将dmy应用于insurance_learning数据集，得到哑变量；使用cbind()函数将这些哑变量加入insurance_learning数据集。删除原始的定类变量sex,smoker和region。将因变量charges和log_charges放在数据集最后两个变量。
+使用predict()函数将dmy应用于insurance_learning数据集，得到哑变量；
+使用cbind()函数将这些哑变量加入insurance_learning数据集；
+删除原始的定类变量sex,smoker和region；
+将因变量charges和log_charges放在数据集最后两个变量。
 
 
-####类似的，获得将不是哑变量形式的定类自变量转换为哑变量之后的测试数据集。
+类似的，获得将不是哑变量形式的定类自变量转换为哑变量之后的测试数据集。
 insurance_test <- 
   cbind(insurance_test,predict(dmy,insurance_test)) %>%
   select(-c(sex,smoker,region)) %>%
   select(-c(charges,log_charges),everything())
-####使用predict()函数将dmy应用于insurance_test数据集，得到哑变量；使用cbind()函数将这些哑变量加入insurance_test数据集。删除原始的定类变量；将因变量charges和log_charges放在数据集最后两个变量。
+使用predict()函数将dmy应用于insurance_test数据集，得到哑变量；
+使用cbind()函数将这些哑变量加入insurance_test数据集；
+删除原始的定类变量；
+将因变量charges和log_charges放在数据集最后两个变量。
 
 
-####根据学习数据集建立Lasso模型。
+根据学习数据集建立Lasso模型。
 fit.lasso <- cv.glmnet(as.matrix(insurance_learning[,1:8]), 
                        insurance_learning$log_charges,
                        family="gaussian")
-####cv.glmnet()函数使用交叉验证选出调节参数lambda的最佳值。cv.glmnet()函数要求自变量是矩阵的格式，所以使用as.matrix()函数将自变量转换为矩阵格式。family="gaussian"说明因变量为满足正态分布的连续变量。
+cv.glmnet()函数使用交叉验证选出调节参数lambda的最佳值；
+cv.glmnet()函数要求自变量是矩阵的格式，所以使用as.matrix()函数将自变量转换为矩阵格式；
+family="gaussian"说明因变量为满足正态分布的连续变量。
 
 
-####使用Lasso模型对测试数据集进行预测。
+使用Lasso模型对测试数据集进行预测。
 pred.lasso <- predict(fit.lasso,
                            as.matrix(insurance_test[,1:8]),
                            s="lambda.min")
-####使用的自变量矩阵为根据insurance_test数据集的第1至8列转换而成的矩阵，s="lambda.min"指定将lambda值设为使交叉验证的平均误差最小的值。
+使用的自变量矩阵为根据insurance_test数据集的第1至8列转换而成的矩阵，s="lambda.min"指定将lambda值设为使交叉验证的平均误差最小的值。
 
-####计算对测试数据集的保险费用预测的均方根误差。
+计算对测试数据集的保险费用预测的均方根误差。
 rmse.lasso <- sqrt(mean((exp(pred.lasso)-insurance_test$charges)^2))
 rmse.lasso
-####均方根误差取值为9189.32。
+均方根误差取值为9189.32。
 
-####对insurance数据集建立lasso模型时交叉验证的平均误差随 λ 的对数值变化的情况。
+对insurance数据集建立lasso模型时交叉验证的平均误差随 λ 的对数值变化的情况。
 pdf("D:/数据挖掘——基于R语言的实战/dma_Rbook/insuarance_fit_lasso",height = 4.5,width = 5.5)
 plot(fit.lasso,xvar = "lambda",label = T,col = "black",main = "Lasso")
 dev.off

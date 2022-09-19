@@ -17,11 +17,11 @@ library(caret)
 set.seed(220914)
 ```
 
-1.读取insurance.csv中的数据，声明各变量类型，并将数据储存为R数据框。查看各分类变量的频数表。对因变量charges进行对数转换。
+## 1.读取insurance.csv中的数据，声明各变量类型，并将数据储存为R数据框。查看各分类变量的频数表。对因变量charges进行对数转换。
 
 ```{r}
 读入数据，生成R数据框。将sex、smoker和region按照字符型变量读入，其他变量按照数值型变量读入。
-insurance <- read.csv("D:/数据挖掘——基于R语言的实战/experiment/data/insurance.csv",
+insurance <- read.csv("./data-raw/insurance.csv",
                   colClasses = c("numeric","character",
                                  rep("numeric",2),
                                  rep("character",2),
@@ -48,7 +48,7 @@ table(insurance$region)
 insurance <- insurance %>% mutate(log_charges=log(charges))
 ```
 
-2. 随机抽取 70% 的观测作为学习数据集，剩余 30% 作为测试数据集。将学习数据集和测试数据集存入 .csv文件。
+## 2. 随机抽取 70% 的观测作为学习数据集，剩余 30% 作为测试数据集。将学习数据集和测试数据集存入 .csv文件。
 
 ```{r}
 id_learning <- sample(1:nrow(insurance), 0.7*nrow(insurance))
@@ -68,7 +68,7 @@ write.csv(insurance_test, "D:/数据挖掘——基于R语言的实战/experimen
           row.names = FALSE)
 ```
 
-3. 根据学习数据集建立线性模型。查看模型诊断图并点评。计算线性模型对测试数据集的保险费用预测的均方根误差。
+## 3. 根据学习数据集建立线性模型。查看模型诊断图并点评。计算线性模型对测试数据集的保险费用预测的均方根误差。
 
 ```{r}
 fit.lm <- lm(log_charges ~ age+sex+bmi+children+smoker+region,
@@ -98,7 +98,7 @@ rmse.lm
 均方根误差取值为9218.499。
 ```
 
-4. 根据学习数据集建立Lasso模型，使用交叉验证选择调节参数。计算Lasso模型对测试数据集的保险费用预测的均方根误差。
+## 4. 根据学习数据集建立 Lasso 模型，使用交叉验证选择调节参数。计算Lasso模型对测试数据集的保险费用预测的均方根误差。
 
 ```{r}
 下面将用到的cv.glmnet()函数不能应对不是哑变量形式的定类变量，因此需要事先将这些变量转换为哑变量。
@@ -168,10 +168,5 @@ pred.lasso <- predict(fit.lasso,
 rmse.lasso <- sqrt(mean((exp(pred.lasso)-insurance_test$charges)^2))
 rmse.lasso
 均方根误差取值为9189.32。
-
-对insurance数据集建立lasso模型时交叉验证的平均误差随 λ 的对数值变化的情况。
-pdf("D:/数据挖掘——基于R语言的实战/dma_Rbook/insuarance_fit_lasso",height = 4.5,width = 5.5)
-plot(fit.lasso,xvar = "lambda",label = T,col = "black",main = "Lasso")
-dev.off
 ```
 

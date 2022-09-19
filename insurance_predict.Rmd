@@ -61,10 +61,10 @@ insurance_test <- insurance[-id_learning,]
 测试数据集包含其他观测序号对应的观测。
 
 将学习数据集和测试数据集存入.csv文件。
-write.csv(insurance_learning, "D:/数据挖掘——基于R语言的实战/experiment/data/insurance_learning.csv",
+write.csv(insurance_learning, "./data-raw/insurance_learning.csv",
           row.names = FALSE)
 
-write.csv(insurance_test, "D:/数据挖掘——基于R语言的实战/experiment/data/insurance_test.csv",
+write.csv(insurance_test, "./data-raw/insurance_test.csv",
           row.names = FALSE)
 ```
 
